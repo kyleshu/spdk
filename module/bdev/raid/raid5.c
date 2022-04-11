@@ -889,6 +889,14 @@ raid5_stripe_read(struct stripe_request *stripe_req)
         }
     }
 
+//    // For testing
+//    FOR_EACH_CHUNK(stripe_req, chunk) {
+//        if (chunk->req_blocks > 0) {
+//            d_chunk = stripe_req->degraded_chunk = chunk;
+//            break;
+//        }
+//    }
+
     if (d_chunk && total_degraded > raid_bdev->module->base_bdevs_max_degraded) {
         raid5_abort_stripe_request(stripe_req, SPDK_BDEV_IO_STATUS_FAILED);
         return;
