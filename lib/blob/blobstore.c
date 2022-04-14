@@ -4762,6 +4762,7 @@ spdk_bs_dump(struct spdk_bs_dev *dev, FILE *fp, spdk_bs_dump_print_xattr print_x
 static void
 bs_init_persist_super_cpl(spdk_bs_sequence_t *seq, void *cb_arg, int bserrno)
 {
+	SPDK_NOTICELOG("init_trim_cpl cb here\n");
 	struct spdk_bs_load_ctx *ctx = cb_arg;
 
 	ctx->bs->used_clusters = spdk_bit_pool_create_from_array(ctx->used_clusters);
