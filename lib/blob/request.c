@@ -150,13 +150,13 @@ bs_sequence_read_dev(spdk_bs_sequence_t *seq, void *payload,
 		     uint64_t lba, uint32_t lba_count,
 		     spdk_bs_sequence_cpl cb_fn, void *cb_arg)
 {
-	static int read_cnt = 0;
-	read_cnt++;
-	SPDK_NOTICELOG("bs seq lba_count %lu, lba %u, read cnt %d\n", lba_count, lba, read_cnt);
+	// static int read_cnt = 0;
+	// read_cnt++;
+	// SPDK_NOTICELOG("bs seq lba_count %lu, lba %u, read cnt %d\n", lba_count, lba, read_cnt);
 	if(lba_count == 16) {
 		assert(lba & 0xf == 0);
 		if(cached[lba >> 4] == true) {
-			SPDK_NOTICELOG("read cache hit\n");
+			// SPDK_NOTICELOG("read cache hit\n");
 			memcpy(payload, super_cache + (lba << 9), lba_count << 9);
 			cb_fn(seq, cb_arg, 0);
 			return;
@@ -182,11 +182,11 @@ bs_sequence_write_dev(spdk_bs_sequence_t *seq, void *payload,
 {
 	static int write_cnt = 0;
 	write_cnt++;
-	SPDK_NOTICELOG("bs seq lba_count %lu, lba %u, write cnt %d\n", lba_count, lba, write_cnt);
+	// SPDK_NOTICELOG("bs seq lba_count %lu, lba %u, write cnt %d\n", lba_count, lba, write_cnt);
 	if(write_cnt > 5 && lba_count == 16) {
 		assert(lba & 0xf == 0);
 		cached[lba >> 4] = true;
-		SPDK_NOTICELOG("write to cache, offset %u, length %u, src %p\n", lba << 9, lba_count << 9, payload);
+		// SPDK_NOTICELOG("write to cache, offset %u, length %u, src %p\n", lba << 9, lba_count << 9, payload);
 		memcpy( (void*)super_cache + (lba << 9), payload, lba_count << 9);
 		cb_fn(seq, cb_arg, 0);
 		return;
