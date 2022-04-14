@@ -187,7 +187,7 @@ bs_sequence_write_dev(spdk_bs_sequence_t *seq, void *payload,
 		assert(lba & 0xf == 0);
 		cached[lba >> 4] = true;
 		SPDK_NOTICELOG("write to cache, offset %u, length %u, src %p\n", lba << 9, lba_count << 9, payload);
-		memcpy( (void*)(super_cache + lba << 9), payload, lba_count << 9);
+		memcpy( (void*)super_cache + (lba << 9), payload, lba_count << 9);
 		SPDK_NOTICELOG("memcpy over\n");
 		cb_fn(seq, cb_arg, 0);
 		return;
