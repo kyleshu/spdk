@@ -157,7 +157,7 @@ bs_sequence_read_dev(spdk_bs_sequence_t *seq, void *payload,
 		assert(lba & 0xf == 0);
 		if(cached[lba >> 4] == true) {
 			SPDK_NOTICELOG("read cache hit\n");
-			memcpy(payload, super_cache[lba << 9], lba_count << 9);
+			memcpy(payload, super_cache + (lba << 9), lba_count << 9);
 			cb_fn(seq, cb_arg, 0);
 			return;
 		}
