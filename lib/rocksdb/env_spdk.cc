@@ -892,7 +892,7 @@ static void hello_read(void *arg)
         spdk_bdev_queue_io_wait(hello_context->bdev, hello_context->bdev_io_channel,
                     &hello_context->bdev_io_wait);
     } else if (rc) {
-        SPDK_ERRLOG("%s error while reading from bdev: %d\n", spdk_strerror(-rc), rc);
+        //SPDK_ERRLOG("%s error while reading from bdev: %d\n", spdk_strerror(-rc), rc);
         spdk_put_io_channel(hello_context->bdev_io_channel);
         spdk_bdev_close(hello_context->bdev_desc);
         spdk_app_stop(-1);
@@ -942,7 +942,7 @@ static void hello_write(void *arg) {
         spdk_bdev_queue_io_wait(hello_context->bdev, hello_context->bdev_io_channel,
                     &hello_context->bdev_io_wait);
     } else if (rc) {
-        SPDK_ERRLOG("%s error while writing to bdev: %d\n", spdk_strerror(-rc), rc);
+        //SPDK_ERRLOG("%s error while writing to bdev: %d\n", spdk_strerror(-rc), rc);
         spdk_put_io_channel(hello_context->bdev_io_channel);
         spdk_bdev_close(hello_context->bdev_desc);
         spdk_app_stop(-1);
