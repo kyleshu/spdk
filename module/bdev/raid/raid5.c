@@ -695,6 +695,8 @@ raid5_stripe_write_submit(struct stripe_request *stripe_req)
     stripe_req->chunk_requests_complete_cb = raid5_complete_stripe_request;
 
     FOR_EACH_CHUNK(stripe_req, chunk) {
+        if (chunk == stripe_req->degraded_chunk)
+            continue;
         if (chunk->req_blocks > 0) {
             raid5_submit_chunk_request(chunk, CHUNK_WRITE);
         }
@@ -705,6 +707,7 @@ raid5_stripe_write_submit(struct stripe_request *stripe_req)
 static void
 raid5_stripe_write_preread_complete_rmw(struct stripe_request *stripe_req)
 {
+    SPDK_NOTICELOG("raid5_stripe_write_preread_complete_rmw\n");
     struct chunk *chunk;
     struct chunk *p_chunk = stripe_req->parity_chunk;
     uint32_t blocklen = stripe_req->raid_io->raid_bdev->bdev.blocklen;
@@ -743,6 +746,7 @@ raid5_stripe_write_preread_complete_rmw(struct stripe_request *stripe_req)
 static void
 raid5_stripe_write_preread_complete(struct stripe_request *stripe_req)
 {
+    SPDK_NOTICELOG("raid5_stripe_write_preread_complete\n");
     struct chunk *chunk;
     struct chunk *p_chunk = stripe_req->parity_chunk;
     uint32_t blocklen = stripe_req->raid_io->raid_bdev->bdev.blocklen;
@@ -771,9 +775,6 @@ raid5_stripe_write_preread_complete(struct stripe_request *stripe_req)
                            chunk->req_blocks * blocklen);
         }
         
-        if (chunk == stripe_req->degraded_chunk) {
-            chunk->req_blocks = chunk->req_offset = 0;
-        }
     }
 
     raid5_stripe_write_submit(stripe_req);
@@ -783,6 +784,7 @@ raid5_stripe_write_preread_complete(struct stripe_request *stripe_req)
 static void
 raid5_stripe_write_preread_complete_direct(struct stripe_request *stripe_req)
 {
+    SPDK_NOTICELOG("raid5_stripe_write_preread_complete_direct\n");
     struct chunk *chunk;
     int ret = 0;
     FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
@@ -801,6 +803,7 @@ raid5_stripe_write_preread_complete_direct(struct stripe_request *stripe_req)
 static void
 raid5_stripe_write_preread_complete_rermw(struct stripe_request *stripe_req)
 {
+    SPDK_NOTICELOG("raid5_stripe_write_preread_complete_rermw\n");
     struct chunk *chunk;
     struct chunk *p_chunk = stripe_req->parity_chunk;
     struct chunk *d_chunk = stripe_req->degraded_chunk;
@@ -851,9 +854,6 @@ raid5_stripe_write_preread_complete_rermw(struct stripe_request *stripe_req)
                            chunk->req_blocks * blocklen);
         }
         
-        if (chunk == d_chunk) {
-            chunk->req_blocks = chunk->req_offset = 0;
-        }
     }
 
     raid5_stripe_write_submit(stripe_req);
@@ -905,6 +905,7 @@ raid5_stripe_write(struct stripe_request *stripe_req)
     // 2. 0 < req_blocks < stripe_size: partial update, no preference
     // 3. req_blocks == stripe_size: full update, favors reconstruction write
     FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
+        SPDK_NOTICELOG("chunk %hu req %lu,%lu\n", chunk->index, chunk->req_offset, chunk->req_blocks);
         if (chunk->req_blocks < p_chunk->req_blocks) {
             preread_balance++;
         }
@@ -913,6 +914,7 @@ raid5_stripe_write(struct stripe_request *stripe_req)
             preread_balance--;
         }
     }
+    SPDK_NOTICELOG("p_chunk %hu req %lu,%lu\n", p_chunk->index, p_chunk->req_offset, p_chunk->req_blocks);
 
     // Note: Degraded req -> reconstruction, Degraded non-req -> rmw;
     if (d_chunk && d_chunk!=p_chunk) {
@@ -922,8 +924,7 @@ raid5_stripe_write(struct stripe_request *stripe_req)
         else{
             preread_balance = 1;
         }
-        // Note: preread_balance not only control cb, \
-            // but also following chunk-read assignment.
+        // Note: preread_balance not only control cb, but also following chunk-read assignment.
     }
 
     // TODO: Note: start from here, dRaid has a different implementation
@@ -938,7 +939,7 @@ raid5_stripe_write(struct stripe_request *stripe_req)
         stripe_req->chunk_requests_complete_cb = \
             raid5_stripe_write_preread_complete_direct; // Note: Direct write.
     }
-    else if (d_chunk->req_blocks && !(\
+    else if (d_chunk && d_chunk->req_blocks && !(\
         p_chunk->req_offset >= d_chunk->req_offset && \
         d_chunk->req_offset+d_chunk->req_blocks >= \
         p_chunk->req_offset+p_chunk->req_blocks)) {
@@ -951,7 +952,7 @@ raid5_stripe_write(struct stripe_request *stripe_req)
         assert(p_chunk->req_offset == 0 && \
             p_chunk->req_blocks == raid_bdev->strip_size);
         assert(d_chunk->req_offset == 0 != \
-            d_chunk->req_offset+d_chunk->req_blocks == raid_bdev->strip_size)
+            d_chunk->req_offset+d_chunk->req_blocks == raid_bdev->strip_size);
         
         d_chunk->preread_blocks = d_chunk->preread_offset = 0;
         
@@ -962,7 +963,7 @@ raid5_stripe_write(struct stripe_request *stripe_req)
                 // Note: p_chunk, req chunks.
                 
                 chunk->preread_offset = 0;
-                chunk->preread_blocks = raid_bdev->stripe_size;
+                chunk->preread_blocks = raid_bdev->strip_size;
                 
             }
             else{
