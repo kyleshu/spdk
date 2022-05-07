@@ -770,10 +770,95 @@ raid5_stripe_write_preread_complete(struct stripe_request *stripe_req)
                            chunk->iovs, chunk->iovcnt, 0,
                            chunk->req_blocks * blocklen);
         }
+        
+        if (chunk == stripe_req->degraded_chunk) {
+            chunk->req_blocks = chunk->req_offset = 0;
+        }
     }
 
     raid5_stripe_write_submit(stripe_req);
 }
+
+// Note: Direct write with no parity.
+static void
+raid5_stripe_write_preread_complete_direct(struct stripe_request *stripe_req)
+{
+    struct chunk *chunk;
+    int ret = 0;
+    FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
+        if (chunk->req_blocks > 0) {
+            ret = raid5_chunk_map_req_data(chunk);
+            if (ret) {
+                raid5_abort_stripe_request(stripe_req, errno_to_status(ret));
+                return;
+            }
+        }
+    }
+    raid5_stripe_write_submit(stripe_req);
+}
+
+// Note: Reconstruction read + modify + write.
+static void
+raid5_stripe_write_preread_complete_rermw(struct stripe_request *stripe_req)
+{
+    struct chunk *chunk;
+    struct chunk *p_chunk = stripe_req->parity_chunk;
+    struct chunk *d_chunk = stripe_req->degraded_chunk;
+    uint32_t blocklen = stripe_req->raid_io->raid_bdev->bdev.blocklen;
+    int ret = 0;
+    
+    size_t src_offset, dest_offset;
+    
+    dest_offset = (d_chunk->req_offset - p_chunk->preread_offset) * blocklen;
+    
+    raid5_xor_iovs(p_chunk->iovs, p_chunk->iovcnt, dest_offset, \
+        p_chunk->iovs, p_chunk->iovcnt, dest_offset, \
+        d_chunk->req_blocks * blocklen);
+
+    FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
+        
+        if (chunk->preread_blocks > 0) {
+            dest_offset = \
+                (d_chunk->req_offset - p_chunk->preread_offset) * blocklen;
+            src_offset = \
+                (d_chunk->req_offset - chunk->preread_offset) * blocklen;
+            raid5_xor_iovs(p_chunk->iovs, p_chunk->iovcnt, dest_offset, \
+                chunk->iovs, chunk->iovcnt, src_offset, \
+                d_chunk->req_blocks * blocklen);
+        }
+        
+        if (chunk->req_blocks > 0) {
+            
+            if (chunk != d_chunk) {
+                dest_offset = \
+                    (chunk->req_offset - p_chunk->req_offset) * blocklen;
+                src_offset = \
+                    (chunk->req_offset - chunk->preread_offset) * blocklen;
+                raid5_xor_iovs(p_chunk->iovs, p_chunk->iovcnt, dest_offset, \
+                    chunk->iovs, chunk->iovcnt, src_offset, \
+                    chunk->req_blocks * blocklen);
+            }
+            
+            ret = raid5_chunk_map_req_data(chunk);
+            if (ret) {
+                raid5_abort_stripe_request(stripe_req, errno_to_status(ret));
+                return;
+            }
+
+            raid5_xor_iovs(p_chunk->iovs, p_chunk->iovcnt,
+                           (chunk->req_offset - p_chunk->req_offset) * blocklen,
+                           chunk->iovs, chunk->iovcnt, 0,
+                           chunk->req_blocks * blocklen);
+        }
+        
+        if (chunk == d_chunk) {
+            chunk->req_blocks = chunk->req_offset = 0;
+        }
+    }
+
+    raid5_stripe_write_submit(stripe_req);
+}
+
 
 static void
 raid5_stripe_write(struct stripe_request *stripe_req)
@@ -783,6 +868,29 @@ raid5_stripe_write(struct stripe_request *stripe_req)
     struct chunk *chunk;
     int preread_balance = 0;
 
+    struct chunk *d_chunk = stripe_req->degraded_chunk = NULL;
+    struct raid_base_bdev_info *base_info;
+    uint8_t total_degraded = 0;
+    
+    // Note: Count degraded device and record last visited d_chunk.
+    FOR_EACH_CHUNK(stripe_req, chunk) {
+        base_info = &raid_bdev->base_bdev_info[chunk->index];
+        if (base_info->degraded) {
+            ++total_degraded;
+            d_chunk = stripe_req->degraded_chunk = chunk;
+        }
+    }
+    
+    // Note: Too many degraded chunks, ABORT.
+    // Note: The conditions have a bit diff with raid5_stripe_read.
+    if (total_degraded > raid_bdev->module->base_bdevs_max_degraded) {
+        raid5_abort_stripe_request(stripe_req, SPDK_BDEV_IO_STATUS_ABORTED);
+        return;
+    }
+    
+    // Note: For now assume total_degraded == 1. TODO: Review.
+    
+    
     // Note: single chunk -> partial parity update; > 1 chunk -> full parity update
     if (stripe_req->first_data_chunk == stripe_req->last_data_chunk) {
         p_chunk->req_offset = stripe_req->first_data_chunk->req_offset;
@@ -806,14 +914,74 @@ raid5_stripe_write(struct stripe_request *stripe_req)
         }
     }
 
+    // Note: Degraded req -> reconstruction, Degraded non-req -> rmw;
+    if (d_chunk && d_chunk!=p_chunk) {
+        if (d_chunk->req_blocks > 0) {
+            preread_balance = 0;
+        }
+        else{
+            preread_balance = 1;
+        }
+        // Note: preread_balance not only control cb, \
+            // but also following chunk-read assignment.
+    }
+
     // TODO: Note: start from here, dRaid has a different implementation
     if (preread_balance > 0) {
         stripe_req->chunk_requests_complete_cb = raid5_stripe_write_preread_complete_rmw;
     } else {
         stripe_req->chunk_requests_complete_cb = raid5_stripe_write_preread_complete;
     }
-
-    FOR_EACH_CHUNK(stripe_req, chunk) {
+    
+    if (d_chunk == p_chunk) {
+        p_chunk->req_blocks = p_chunk->req_offset = 0;
+        stripe_req->chunk_requests_complete_cb = \
+            raid5_stripe_write_preread_complete_direct; // Note: Direct write.
+    }
+    else if (d_chunk->req_blocks && !(\
+        p_chunk->req_offset >= d_chunk->req_offset && \
+        d_chunk->req_offset+d_chunk->req_blocks >= \
+        p_chunk->req_offset+p_chunk->req_blocks)) {
+        
+        // Note: If new data doesn't cover the modified seg, a reconstruction needed.
+        
+        stripe_req->chunk_requests_complete_cb = \
+            raid5_stripe_write_preread_complete_rermw;
+        
+        assert(p_chunk->req_offset == 0 && \
+            p_chunk->req_blocks == raid_bdev->strip_size);
+        assert(d_chunk->req_offset == 0 != \
+            d_chunk->req_offset+d_chunk->req_blocks == raid_bdev->strip_size)
+        
+        d_chunk->preread_blocks = d_chunk->preread_offset = 0;
+        
+        FOR_EACH_CHUNK(stripe_req, chunk) {
+            if (chunk == d_chunk)   continue;
+            if (chunk == p_chunk || chunk->req_blocks) {
+                
+                // Note: p_chunk, req chunks.
+                
+                chunk->preread_offset = 0;
+                chunk->preread_blocks = raid_bdev->stripe_size;
+                
+            }
+            else{
+                chunk->preread_offset = d_chunk->req_offset;
+                chunk->preread_blocks = d_chunk->req_blocks;
+            }
+            
+            size_t len = chunk->preread_blocks * raid_bdev->bdev.blocklen;
+            
+            chunk->iov.iov_base = stripe_req->stripe->chunk_buffers[chunk->index];
+            chunk->iov.iov_len = len;
+            
+            raid5_submit_chunk_request(chunk, CHUNK_PREREAD);
+            
+        }
+    }
+    else{
+        
+    FOR_EACH_CHUNK(stripe_req, chunk) { // Q: Will this always enum p_chunk?
         if (preread_balance > 0) { // Note: for RMW, request chunks are the same as the preread chunks
             chunk->preread_offset = chunk->req_offset;
             chunk->preread_blocks = chunk->req_blocks;
@@ -857,6 +1025,8 @@ raid5_stripe_write(struct stripe_request *stripe_req)
         if (chunk->preread_blocks) {
             raid5_submit_chunk_request(chunk, CHUNK_PREREAD);
         }
+    }
+    
     }
 
     // Note: If no preread needs to be done (full stripe), complete immediately
