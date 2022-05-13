@@ -1159,7 +1159,7 @@ raid_bdev_alloc_base_bdev_resource(struct raid_bdev *raid_bdev, const char *bdev
     raid_bdev->base_bdev_info[base_bdev_slot].degraded = false;
     // TODO: add this when testing with degraded disk
    if (raid_bdev->level == RAID5) {
-	   uint8_t slot2DD=2;
+	   uint8_t slot2DD=1;
        if (base_bdev_slot == slot2DD) {
 		   SPDK_NOTICELOG("degraded %d\n", slot2DD);
            raid_bdev->base_bdev_info[base_bdev_slot].degraded = true;

@@ -218,6 +218,27 @@ raid5_xor_buf(void *restrict to, void *restrict from, size_t size)
 }
 #endif
 
+static void
+raid5_show_iov(struct iovec *iov){
+    size_t cnt=0;
+    for(size_t i=0;i<iov->iov_len;++i){
+        if(((char *)(iov->iov_base))[i]=='\0')  ++cnt;
+        else if(cnt>0)  {printf("(%d)", cnt);cnt=0;}
+        printf("%c", ((char *)(iov->iov_base))[i]);
+    }
+    if(cnt>0)   printf("(%d)", cnt);
+}
+
+static void
+raid5_show_iovs(struct iovec *iovs, int iovs_cnt){
+    printf("(ST)\n");
+    for(int i=0;i<iovs_cnt;++i){
+        raid5_show_iov(iovs+i);
+        printf("--%u--\n", iovs[i].iov_len);
+    }
+    printf("(END)\n");
+}
+
 // Note: need q for raid6
 static void
 raid5_xor_iovs(struct iovec *iovs_dest, int iovs_dest_cnt, size_t iovs_dest_offset,
@@ -552,6 +573,7 @@ raid5_complete_reconstructed_stripe_request(struct stripe_request *stripe_req)
     uint64_t len;
     struct iovec *preread_iovs;
     int preread_iovcnt;
+    struct iovec tmp_iov;
 
     // Note: construct d_chunk
     raid5_memset_iovs(d_chunk->iovs, d_chunk->iovcnt, 0);
@@ -573,8 +595,10 @@ raid5_complete_reconstructed_stripe_request(struct stripe_request *stripe_req)
     FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
         len = chunk->req_blocks * blocklen;
         if (chunk->req_blocks > 0 && chunk != d_chunk && chunk->request_type == CHUNK_PREREAD) {
-            preread_iovs = chunk->iovs;
-            preread_iovcnt = chunk->iovcnt;
+            assert(chunk->iovs==&chunk->iov && chunk->iovcnt==1);
+            tmp_iov=chunk->iov;
+            preread_iovs=&tmp_iov;
+            preread_iovcnt=1;
             ret = raid5_chunk_map_req_data(chunk);
             if (ret) {
                 raid5_abort_stripe_request(stripe_req, errno_to_status(ret));

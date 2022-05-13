@@ -41,8 +41,8 @@
 #include "spdk/bdev_zone.h"
 
 static char *g_bdev_name = "Raid0";
-static uint64_t start_offset = 0;
-static uint64_t span_length = 12;
+static uint64_t start_offset = 4;
+static uint64_t span_length = 10;
 
 /*
  * We'll use this struct to gather housekeeping hello_context to pass between
