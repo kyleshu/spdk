@@ -2000,6 +2000,8 @@ rpc_nvmf_create_transport(struct spdk_jsonrpc_request *request,
 		return;
 	}
 
+    SPDK_NOTICELOG("in_capsule_data_size before: %u\n", ctx->opts.in_capsule_data_size);
+
 	/* Initialize all the transport options (based on transport type) and decode the
 	 * parameters again to update any options passed in rpc create transport call.
 	 */
@@ -2013,6 +2015,8 @@ rpc_nvmf_create_transport(struct spdk_jsonrpc_request *request,
 		nvmf_rpc_create_transport_ctx_free(ctx);
 		return;
 	}
+
+    SPDK_NOTICELOG("in_capsule_data_size after: %u\n", ctx->opts.in_capsule_data_size);
 
 	if (spdk_json_decode_object_relaxed(params, nvmf_rpc_create_transport_decoder,
 					    SPDK_COUNTOF(nvmf_rpc_create_transport_decoder),
