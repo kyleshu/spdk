@@ -12,6 +12,9 @@
 #include <rte_hash.h>
 #include <rte_memory.h>
 
+static uint64_t count = 0;
+static uint64_t time_sum = 0;
+
 struct stripe_request {
     /* The associated raid_bdev_io */
     struct raid_bdev_io *raid_io;
@@ -1164,6 +1167,17 @@ raid5_complete_chunk_request_read(struct spdk_bdev_io *bdev_io, bool success, vo
 
     spdk_bdev_free_io(bdev_io);
 
+    uint64_t time = spdk_get_ticks() - raid_io->timestamp;
+    count++;
+    time_sum += time;
+
+    if (count == 10000) {
+        uint64_t avg_time_us = time_sum * 100 / spdk_get_ticks_hz();
+        SPDK_NOTICELOG("Average latency in us is: %lu\n", avg_time_us);
+        count = 0;
+        time_sum = 0;
+    }
+
     raid_bdev_io_complete_part(raid_io, iov_w->num_blocks, success ? SPDK_BDEV_IO_STATUS_SUCCESS : SPDK_BDEV_IO_STATUS_FAILED);
     TAILQ_INSERT_TAIL(&r5ch->iov_w_queue, iov_w, link);
 }
@@ -1311,6 +1325,8 @@ raid5_submit_rw_request(struct raid_bdev_io *raid_io)
     uint64_t stripe_index = offset_blocks / r5info->stripe_blocks;
     uint64_t stripe_offset = offset_blocks % r5info->stripe_blocks;
     struct stripe *stripe;
+
+    raid_io->timestamp = spdk_get_ticks();
 
     //comment out this block
     if (!raid_bdev->degraded && bdev_io->type == SPDK_BDEV_IO_TYPE_READ) {

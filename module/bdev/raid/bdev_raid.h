@@ -113,6 +113,8 @@ struct raid_bdev_io {
 	uint64_t			base_bdev_io_remaining;
 	uint8_t				base_bdev_io_submitted;
 	uint8_t				base_bdev_io_status;
+
+	uint64_t timestamp;
 };
 
 /*
