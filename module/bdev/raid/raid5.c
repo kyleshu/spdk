@@ -1171,8 +1171,8 @@ raid5_complete_chunk_request_read(struct spdk_bdev_io *bdev_io, bool success, vo
     count++;
     time_sum += time;
 
-    if (count == 10000) {
-        uint64_t avg_time_us = time_sum * 100 / spdk_get_ticks_hz();
+    if (count == 1000000) {
+        uint64_t avg_time_us = time_sum / spdk_get_ticks_hz();
         SPDK_NOTICELOG("Average latency in us is: %lu\n", avg_time_us);
         count = 0;
         time_sum = 0;
