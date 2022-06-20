@@ -2023,8 +2023,6 @@ rpc_nvmf_create_transport(struct spdk_jsonrpc_request *request,
 		return;
 	}
 
-    SPDK_NOTICELOG("in_capsule_data_size: %u\n", ctx->opts.in_capsule_data_size);
-
 	if (spdk_nvmf_tgt_get_transport(tgt, ctx->trtype)) {
 		SPDK_ERRLOG("Transport type '%s' already exists\n", ctx->trtype);
 		spdk_jsonrpc_send_error_response_fmt(request, SPDK_JSONRPC_ERROR_INTERNAL_ERROR,
