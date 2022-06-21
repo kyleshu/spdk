@@ -1173,7 +1173,7 @@ raid5_complete_chunk_request_read(struct spdk_bdev_io *bdev_io, bool success, vo
 
     if (count == 1000000) {
         uint64_t avg_time_us = time_sum / spdk_get_ticks_hz();
-        SPDK_NOTICELOG("Average latency in us is: %lu\n", avg_time_us);
+        //SPDK_NOTICELOG("Average latency in us is: %lu\n", avg_time_us);
         count = 0;
         time_sum = 0;
     }
@@ -1327,9 +1327,6 @@ raid5_submit_rw_request(struct raid_bdev_io *raid_io)
     struct stripe *stripe;
 
     raid_io->timestamp = spdk_get_ticks();
-    struct spdk_thread *thread = spdk_get_thread();
-    int count = spdk_thread_num_active_pollers(thread);
-    SPDK_NOTICELOG("active pollers: %u\n", count);
 
     //comment out this block
     if (!raid_bdev->degraded && bdev_io->type == SPDK_BDEV_IO_TYPE_READ) {

@@ -2729,6 +2729,7 @@ nvme_rdma_poll_group_process_completions(struct spdk_nvme_transport_poll_group *
 
 	completions_allowed = completions_per_qpair * num_qpairs;
 	completions_per_poller = spdk_max(completions_allowed / group->num_pollers, 1);
+    SPDK_NOTICELOG("num of pollers: %u\n", group->num_pollers);
 
 	STAILQ_FOREACH(poller, &group->pollers, link) {
 		poller_completions = 0;
