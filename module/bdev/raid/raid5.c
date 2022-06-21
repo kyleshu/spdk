@@ -1327,13 +1327,8 @@ raid5_submit_rw_request(struct raid_bdev_io *raid_io)
     struct stripe *stripe;
 
     raid_io->timestamp = spdk_get_ticks();
-    spdk_thread *thread = spdk_get_thread();
-    !TAILQ_EMPTY(&thread->active_pollers);
-    struct spdk_poller *poller, *ptmp;
-    uint8_t count = 0;
-    TAILQ_FOREACH(poller, &thread->active_pollers, tailq) {
-        count++;
-    }
+    struct spdk_thread *thread = spdk_get_thread();
+    int count = spdk_thread_num_active_pollers(thread);
     SPDK_NOTICELOG("active pollers: %u\n", count);
 
     //comment out this block
