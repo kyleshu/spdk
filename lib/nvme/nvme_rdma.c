@@ -2733,7 +2733,7 @@ nvme_rdma_poll_group_process_completions(struct spdk_nvme_transport_poll_group *
 	STAILQ_FOREACH(poller, &group->pollers, link) {
 		poller_completions = 0;
 		rdma_completions = 0;
-        SPDK_NOTICELOG("cq size: %u\n", poller->current_num_wc);
+        SPDK_NOTICELOG("batch size: %u, target completion: %u\n", batch_size, completions_per_poller);
 		do {
 			poller->stats.polls++;
 			batch_size = spdk_min((completions_per_poller - poller_completions), MAX_COMPLETIONS_PER_POLL);
