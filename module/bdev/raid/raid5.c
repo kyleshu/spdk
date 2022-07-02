@@ -785,9 +785,10 @@ raid5_stripe_write_preread_complete_degraded(struct stripe_request *stripe_req)
     struct chunk *chunk;
     struct chunk *d_chunk = stripe_req->degraded_chunk;
     struct chunk *p_chunk = stripe_req->parity_chunk;
-    uint32_t blocklen = stripe_req->raid_io->raid_bdev->bdev.blocklen;
+    struct raid_bdev *raid_bdev = stripe_req->raid_io->raid_bdev;
+    uint32_t blocklen = raid_bdev->bdev.blocklen;
     int ret = 0;
-    uint64_t real_preread_offset, real_preread_blocks;
+    uint64_t real_preread_offset, real_preread_blocks, src_offset;
 
     if (p_chunk->preread_blocks) {
         d_chunk->preread_offset = p_chunk->preread_offset;
@@ -869,6 +870,8 @@ raid5_degraded_write(struct stripe_request *stripe_req)
 {
     struct chunk *d_chunk = stripe_req->degraded_chunk;
     struct chunk *p_chunk = stripe_req->parity_chunk;
+    struct chunk *chunk;
+    struct raid_bdev *raid_bdev = stripe_req->raid_io->raid_bdev;
 
     if (d_chunk == p_chunk) {
         raid5_stripe_write_submit(stripe_req);
@@ -981,7 +984,7 @@ raid5_stripe_write(struct stripe_request *stripe_req)
 
 
     if (d_chunk) {
-        raid5_degraded_write(*stripe_req);
+        raid5_degraded_write(stripe_req);
         return;
     }
 
@@ -1071,6 +1074,7 @@ raid5_check_degraded(struct stripe_request *stripe_req)
 {
     struct raid_bdev_io *raid_io = stripe_req->raid_io;
     struct raid_bdev *raid_bdev = raid_io->raid_bdev;
+    struct chunk *chunk;
     struct chunk *d_chunk = stripe_req->degraded_chunk = NULL;
     uint8_t total_degraded = 0;
     struct raid_base_bdev_info *base_info;
