@@ -61,6 +61,9 @@ struct stripe_request {
     /* Degraded chunk */
     struct chunk *degraded_chunks[2];
 
+    uint64_t degraded_req_offset;
+    uint64_t degraded_req_blocks;
+
     /* Link for the stripe's requests list */
     TAILQ_ENTRY(stripe_request) link;
 
@@ -1065,7 +1068,7 @@ raid6_stripe_write_submit(struct stripe_request *stripe_req)
     stripe_req->chunk_requests_complete_cb = raid6_complete_stripe_request;
 
     FOR_EACH_CHUNK(stripe_req, chunk) {
-        if (chunk->req_blocks > 0) {
+        if (chunk->req_blocks > 0 && !chunk->is_degraded)) {
             raid6_submit_chunk_request(chunk, CHUNK_WRITE);
         }
     }
@@ -1508,6 +1511,12 @@ raid6_stripe_read(struct stripe_request *stripe_req)
             }
         }
     }
+}
+
+static int
+raid6_check_degraded(struct stripe_request *stripe_req)
+{
+    return 0;
 }
 
 static void

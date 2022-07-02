@@ -1084,13 +1084,11 @@ raid5_check_degraded(struct stripe_request *stripe_req)
         base_info = &raid_bdev->base_bdev_info[chunk->index];
         if (base_info->degraded) {
             total_degraded++;
-            if (chunk->req_blocks > 0) {
-                d_chunk = stripe_req->degraded_chunk = chunk;
-            }
+            d_chunk = stripe_req->degraded_chunk = chunk;
         }
     }
 
-    if (d_chunk && total_degraded > raid_bdev->module->base_bdevs_max_degraded) {
+    if (total_degraded > raid_bdev->module->base_bdevs_max_degraded) {
         return -1;
     }
 
