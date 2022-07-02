@@ -2736,6 +2736,7 @@ nvme_rdma_poll_group_process_completions(struct spdk_nvme_transport_poll_group *
 		do {
 			poller->stats.polls++;
 			batch_size = spdk_min((completions_per_poller - poller_completions), MAX_COMPLETIONS_PER_POLL);
+            //SPDK_NOTICELOG("batch size: %d, target completion: %lu\n", batch_size, completions_per_poller);
 			rc = nvme_rdma_cq_process_completions(poller->cq, batch_size, group, NULL, &rdma_completions);
 			if (rc <= 0) {
 				if (rc == -ECANCELED) {
