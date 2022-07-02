@@ -75,6 +75,12 @@ static int hello_bdev_parse_arg(int ch, char *arg)
 	case 'b':
 		g_bdev_name = arg;
 		break;
+    case 'L':
+        span_length = (uint64_t) spdk_strtol(arg, 10);
+        break;
+    case 'O':
+        start_offset = (uint64_t) spdk_strtol(arg, 10);
+        break;
 	default:
 		return -EINVAL;
 	}
@@ -318,7 +324,7 @@ main(int argc, char **argv)
 	 * Parse built-in SPDK command line parameters as well
 	 * as our custom one(s).
 	 */
-	if ((rc = spdk_app_parse_args(argc, argv, &opts, "b:", NULL, hello_bdev_parse_arg,
+	if ((rc = spdk_app_parse_args(argc, argv, &opts, "b:L:O:", NULL, hello_bdev_parse_arg,
 				      hello_bdev_usage)) != SPDK_APP_PARSE_ARGS_SUCCESS) {
 		exit(rc);
 	}
