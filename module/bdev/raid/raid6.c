@@ -1354,7 +1354,7 @@ raid6_stripe_write_preread_complete_degraded(struct stripe_request *stripe_req)
             }
             raid6_q_gen_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0,
                              stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0,
-                             stripe_req->degraded_chunks[i]->preread_blocks * blocklen, r6info, 255 - raid6_chunk_data_index(d_chunk));
+                             stripe_req->degraded_chunks[i]->preread_blocks * blocklen, r6info, 255 - raid6_chunk_data_index(stripe_req->degraded_chunks[i]));
         }
 
         raid6_memset_iovs(p_chunk->iovs, p_chunk->iovcnt, 0);
