@@ -1074,7 +1074,7 @@ raid6_stripe_write_submit(struct stripe_request *stripe_req)
     stripe_req->chunk_requests_complete_cb = raid6_complete_stripe_request;
 
     FOR_EACH_CHUNK(stripe_req, chunk) {
-        if (chunk->req_blocks > 0 && !chunk->is_degraded)) {
+        if (chunk->req_blocks > 0 && !chunk->is_degraded) {
             raid6_submit_chunk_request(chunk, CHUNK_WRITE);
         }
     }
@@ -1237,7 +1237,7 @@ raid6_stripe_write_preread_complete_degraded(struct stripe_request *stripe_req)
                 stripe_req->degraded_chunks[i]->preread_blocks = p_chunk->req_blocks;
                 stripe_req->degraded_chunks[i]->iov.iov_base = stripe_req->stripe->chunk_buffers[stripe_req->degraded_chunks[i]->index];
                 stripe_req->degraded_chunks[i]->iov.iov_len = p_chunk->preread_blocks * blocklen;
-                raid5_memset_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0);
+                raid6_memset_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0);
             }
             len = p_chunk->req_blocks * blocklen;
 
@@ -1301,34 +1301,34 @@ raid6_stripe_write_preread_complete_degraded(struct stripe_request *stripe_req)
                            len);
         } else if (p_chunk->preread_blocks) { //P
             for (i = 0; i < 2; i++) {
-                if (stripe_req->degraded_chunks[i]->preread_offset != q_chunk) {
+                if (stripe_req->degraded_chunks[i] != q_chunk) {
                     break;
                 }
             }
             stripe_req->degraded_chunks[i]->preread_offset = p_chunk->preread_offset;
             stripe_req->degraded_chunks[i]->preread_blocks = p_chunk->preread_blocks;
-            stripe_req->degraded_chunks[i]->iov.iov_base = stripe_req->stripe->chunk_buffers[d_chunk->index];
+            stripe_req->degraded_chunks[i]->iov.iov_base = stripe_req->stripe->chunk_buffers[stripe_req->degraded_chunks[i]->index];
             stripe_req->degraded_chunks[i]->iov.iov_len = p_chunk->preread_blocks * blocklen;
-            raid5_memset_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0);
+            raid6_memset_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0);
             FOR_EACH_CHUNK(stripe_req, chunk) {
                 if (chunk != stripe_req->degraded_chunks[i] && chunk != q_chunk) {
                     src_offset = (stripe_req->degraded_chunks[i]->preread_offset - chunk->preread_offset) * blocklen;
-                    raid5_xor_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0,
+                    raid6_xor_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0,
                                    chunk->iovs, chunk->iovcnt, src_offset,
                                    stripe_req->degraded_chunks[i]->preread_blocks * blocklen);
                 }
             }
         } else { //Q
             for (i = 0; i < 2; i++) {
-                if (stripe_req->degraded_chunks[i]->preread_offset != p_chunk) {
+                if (stripe_req->degraded_chunks[i] != p_chunk) {
                     break;
                 }
             }
             stripe_req->degraded_chunks[i]->preread_offset = q_chunk->preread_offset;
             stripe_req->degraded_chunks[i]->preread_blocks = q_chunk->preread_blocks;
-            stripe_req->degraded_chunks[i]->iov.iov_base = stripe_req->stripe->chunk_buffers[d_chunk->index];
+            stripe_req->degraded_chunks[i]->iov.iov_base = stripe_req->stripe->chunk_buffers[stripe_req->degraded_chunks[i]->index];
             stripe_req->degraded_chunks[i]->iov.iov_len = q_chunk->preread_blocks * blocklen;
-            raid5_memset_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0);
+            raid6_memset_iovs(stripe_req->degraded_chunks[i]->iovs, stripe_req->degraded_chunks[i]->iovcnt, 0);
             void *tmp_buf0 = stripe_req->stripe->chunk_buffers[raid_bdev->num_base_bdevs + 1];
             struct iovec iov1 = {
                     .iov_base = tmp_buf0,
@@ -1542,11 +1542,11 @@ raid6_degraded_write(struct stripe_request *stripe_req)
     struct raid_bdev *raid_bdev = stripe_req->raid_io->raid_bdev;
     struct chunk *p_chunk = stripe_req->parity_chunk;
     struct chunk *q_chunk = stripe_req->q_chunk;
-    struct chunk *chunk, *data_d_chunk1, *data_d_chunk2;
-    struct raid_bdev *raid_bdev = stripe_req->raid_io->raid_bdev;
+    struct chunk *chunk;
+    int preread_balance = 0;
 
     if (stripe_req->degraded_type_write == DEGRADED_WRITE_DIRECT) {
-        raid5_stripe_write_submit(stripe_req);
+        raid6_stripe_write_submit(stripe_req);
         return;
     }
 
@@ -1649,7 +1649,7 @@ raid6_degraded_write(struct stripe_request *stripe_req)
                         }
                     }
                 } else { //two degraded drives
-                    struct *degraded_data_chunks[2];
+                    struct chunk *degraded_data_chunks[2];
                     uint8_t count = 0;
                     for (uint8_t i = 0; i < 2; i++) {
                         if (stripe_req->degraded_chunks[i] != p_chunk && stripe_req->degraded_chunks[i] != q_chunk) {

@@ -12,9 +12,6 @@
 #include <rte_hash.h>
 #include <rte_memory.h>
 
-static uint64_t count = 0;
-static uint64_t time_sum = 0;
-
 struct stripe_request {
     /* The associated raid_bdev_io */
     struct raid_bdev_io *raid_io;
