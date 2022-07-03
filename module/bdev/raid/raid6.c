@@ -1218,7 +1218,9 @@ raid6_stripe_write_preread_complete(struct stripe_request *stripe_req)
     int ret = 0;
 
     if (p_chunk->preread_blocks || q_chunk->preread_blocks) {
-        
+        //P
+        //Q
+        //P+Q
 
     } else {
         raid6_memset_iovs(p_chunk->iovs, p_chunk->iovcnt, 0);
