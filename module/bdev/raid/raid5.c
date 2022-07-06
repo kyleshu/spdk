@@ -1102,7 +1102,7 @@ raid5_stripe_read(struct stripe_request *stripe_req)
     struct chunk *d_chunk = stripe_req->degraded_chunk;
     uint64_t len;
 
-    if (d_chunk) { // Note: read necessary blocks for reconstruction
+    if (d_chunk && d_chunk->req_blocks > 0) { // Note: read necessary blocks for reconstruction
         stripe_req->chunk_requests_complete_cb = raid5_complete_reconstructed_stripe_request;
         FOR_EACH_CHUNK(stripe_req, chunk) {
             if (chunk->req_blocks == 0) { // Note: parity chunk or chunks which are not requested
