@@ -1546,6 +1546,15 @@ raid6_degraded_write(struct stripe_request *stripe_req)
     int preread_balance = 0;
 
     if (stripe_req->degraded_type_write == DEGRADED_WRITE_DIRECT) {
+        FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
+            if (chunk->req_blocks > 0) {
+                ret = raid5_chunk_map_req_data(chunk);
+                if (ret) {
+                    raid5_abort_stripe_request(stripe_req, errno_to_status(ret));
+                    return;
+                }
+            }
+        }
         raid6_stripe_write_submit(stripe_req);
         return;
     }

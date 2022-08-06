@@ -646,12 +646,6 @@ _raid5_submit_chunk_request(void *_chunk)
 
     base_offset_blocks = (stripe_req->stripe->index << raid_bdev->strip_size_shift) + offset_blocks;
 
-    for (uint8_t i = 0; i < chunk->iovcnt; i++) {
-        if ((void *) chunk->iovs[i].iov_base == NULL) {
-            SPDK_NOTICELOG("d_chunk req_blocks %lu, current chunk index %d, request type %u\n", stripe_req->degraded_chunk->req_blocks, chunk->index, chunk->request_type);
-        }
-    }
-
     if (io_type == SPDK_BDEV_IO_TYPE_READ) {
         ret = spdk_bdev_readv_blocks(base_info->desc, base_ch,
                                      chunk->iovs, chunk->iovcnt,
@@ -875,8 +869,18 @@ raid5_degraded_write(struct stripe_request *stripe_req)
     struct chunk *p_chunk = stripe_req->parity_chunk;
     struct chunk *chunk;
     struct raid_bdev *raid_bdev = stripe_req->raid_io->raid_bdev;
+    int ret;
 
     if (d_chunk == p_chunk) {
+        FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
+            if (chunk->req_blocks > 0) {
+                ret = raid5_chunk_map_req_data(chunk);
+                if (ret) {
+                    raid5_abort_stripe_request(stripe_req, errno_to_status(ret));
+                    return;
+                }
+            }
+        }
         raid5_stripe_write_submit(stripe_req);
         return;
     }
