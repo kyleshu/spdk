@@ -1544,6 +1544,7 @@ raid6_degraded_write(struct stripe_request *stripe_req)
     struct chunk *q_chunk = stripe_req->q_chunk;
     struct chunk *chunk;
     int preread_balance = 0;
+    int ret;
 
     if (stripe_req->degraded_type_write == DEGRADED_WRITE_DIRECT) {
         FOR_EACH_DATA_CHUNK(stripe_req, chunk) {
