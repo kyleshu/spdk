@@ -648,7 +648,7 @@ _raid5_submit_chunk_request(void *_chunk)
 
     for (uint8_t i = 0; i < chunk->iovcnt; i++) {
         if ((void *) chunk->iovs[i].iov_base == NULL) {
-            SPDK_NOTICELOG("d_chunk req_blocks %lu\n", stripe_req->degraded_chunk->req_blocks);
+            SPDK_NOTICELOG("d_chunk req_blocks %lu, current chunk index %d\n", stripe_req->degraded_chunk->req_blocks, chunk->index);
         }
     }
 
