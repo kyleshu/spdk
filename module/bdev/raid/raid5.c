@@ -646,6 +646,12 @@ _raid5_submit_chunk_request(void *_chunk)
 
     base_offset_blocks = (stripe_req->stripe->index << raid_bdev->strip_size_shift) + offset_blocks;
 
+    for (uint_8 i = 0; i < chunk->iovcnt; i++) {
+        if ((void *) chunk->iovs[i].iov_base == NULL) {
+            SPDK_NOTICELOG("d_chunk req_blocks %lu\n", stripe_req->degraded_chunk->req_blocks)
+        }
+    }
+
     if (io_type == SPDK_BDEV_IO_TYPE_READ) {
         ret = spdk_bdev_readv_blocks(base_info->desc, base_ch,
                                      chunk->iovs, chunk->iovcnt,
