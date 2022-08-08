@@ -2450,11 +2450,11 @@ raid6_submit_rw_request(struct raid_bdev_io *raid_io)
     struct stripe *stripe;
 
     //comment out this block
-    if (!raid_bdev->degraded && bdev_io->type == SPDK_BDEV_IO_TYPE_READ) {
-        raid_io->base_bdev_io_remaining = num_blocks;
-        raid6_handle_read(raid_io, stripe_index, stripe_offset, num_blocks);
-        return;
-    }
+//    if (!raid_bdev->degraded && bdev_io->type == SPDK_BDEV_IO_TYPE_READ) {
+//        raid_io->base_bdev_io_remaining = num_blocks;
+//        raid6_handle_read(raid_io, stripe_index, stripe_offset, num_blocks);
+//        return;
+//    }
 
     stripe = raid6_get_stripe(r6info, stripe_index);
     if (spdk_unlikely(stripe == NULL)) {
