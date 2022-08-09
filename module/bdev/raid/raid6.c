@@ -1481,11 +1481,11 @@ raid6_check_degraded_write(struct stripe_request *stripe_req)
     FOR_EACH_CHUNK(stripe_req, chunk) {
         base_info = &raid_bdev->base_bdev_info[chunk->index];
         if (base_info->degraded) {
-            total_degraded++;
             chunk->is_degraded = true;
             if (total_degraded < 2) {
                 stripe_req->degraded_chunks[total_degraded] = chunk;
             }
+            total_degraded++;
         }
     }
 
