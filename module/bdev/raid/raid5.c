@@ -1529,6 +1529,12 @@ raid5_submit_rw_request(struct raid_bdev_io *raid_io)
     uint64_t stripe_offset = offset_blocks % r5info->stripe_blocks;
     struct stripe *stripe;
 
+    // TODO: for testing
+//    if (raid5_stripe_data_chunks_num(raid_bdev) - stripe_index % raid_bdev->num_base_bdevs == 7) {
+//        stripe_index += (stripe_index + 1) % r5info->total_stripes;
+//    }
+//    stripe_offset = (stripe_offset % raid_bdev->strip_size) + (raid_bdev->strip_size * 6);
+
     //comment out this block
     // if (!raid_bdev->degraded && bdev_io->type == SPDK_BDEV_IO_TYPE_READ) {
     //     raid_io->base_bdev_io_remaining = num_blocks;
