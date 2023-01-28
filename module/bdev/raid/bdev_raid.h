@@ -211,6 +211,8 @@ struct raid_bdev_config {
 	/* raid level */
 	enum raid_level			level;
 
+	bool                    degraded;
+
 	TAILQ_ENTRY(raid_bdev_config)	link;
 };
 
@@ -274,7 +276,7 @@ int raid_bdev_add_base_devices(struct raid_bdev_config *raid_cfg);
 void raid_bdev_remove_base_devices(struct raid_bdev_config *raid_cfg,
 				   raid_bdev_destruct_cb cb_fn, void *cb_ctx);
 int raid_bdev_config_add(const char *raid_name, uint32_t strip_size, uint8_t num_base_bdevs,
-			 enum raid_level level, struct raid_bdev_config **_raid_cfg);
+			 enum raid_level level, bool degraded, struct raid_bdev_config **_raid_cfg);
 int raid_bdev_config_add_base_bdev(struct raid_bdev_config *raid_cfg,
 				   const char *base_bdev_name, uint8_t slot);
 void raid_bdev_config_cleanup(struct raid_bdev_config *raid_cfg);

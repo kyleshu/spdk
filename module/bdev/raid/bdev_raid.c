@@ -784,7 +784,7 @@ raid_bdev_config_find_by_name(const char *raid_name)
  */
 int
 raid_bdev_config_add(const char *raid_name, uint32_t strip_size, uint8_t num_base_bdevs,
-		     enum raid_level level, struct raid_bdev_config **_raid_cfg)
+		     enum raid_level level, bool degraded, struct raid_bdev_config **_raid_cfg)
 {
 	struct raid_bdev_config *raid_cfg;
 
@@ -820,6 +820,7 @@ raid_bdev_config_add(const char *raid_name, uint32_t strip_size, uint8_t num_bas
 	raid_cfg->strip_size = strip_size;
 	raid_cfg->num_base_bdevs = num_base_bdevs;
 	raid_cfg->level = level;
+    raid_cfg->degraded = degraded;
 
 	raid_cfg->base_bdev = calloc(num_base_bdevs, sizeof(*raid_cfg->base_bdev));
 	if (raid_cfg->base_bdev == NULL) {
@@ -1086,7 +1087,7 @@ raid_bdev_create(struct raid_bdev_config *raid_cfg)
 	raid_bdev->state = RAID_BDEV_STATE_CONFIGURING;
 	raid_bdev->config = raid_cfg;
 	raid_bdev->level = raid_cfg->level;
-    raid_bdev->degraded = false;
+    raid_bdev->degraded = raid_cfg->degraded;
 
 	raid_bdev_gen = &raid_bdev->bdev;
 
@@ -1156,7 +1157,11 @@ raid_bdev_alloc_base_bdev_resource(struct raid_bdev *raid_bdev, const char *bdev
 	raid_bdev->base_bdev_info[base_bdev_slot].thread = spdk_get_thread();
 	raid_bdev->base_bdev_info[base_bdev_slot].bdev = bdev;
 	raid_bdev->base_bdev_info[base_bdev_slot].desc = desc;
-    raid_bdev->base_bdev_info[base_bdev_slot].degraded = false;
+    if (raid_bdev->degraded && base_bdev_slot == 0) {
+        raid_bdev->base_bdev_info[base_bdev_slot].degraded = true;
+    } else {
+        raid_bdev->base_bdev_info[base_bdev_slot].degraded = false;
+    }
     // TODO: add this when testing with degraded disk
 //    if (raid_bdev->level == RAID5) {
 //        if (base_bdev_slot == 0) {
