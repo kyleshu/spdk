@@ -31,7 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "../../../dRaid/src/common/readerwriterqueue.h"
+#include "../../../dRAID/dRAID/shared/readerwriterqueue.h"
 
 #include "rocksdb/env.h"
 #include <set>
